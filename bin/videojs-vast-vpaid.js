@@ -2632,7 +2632,7 @@ HttpRequest.prototype.run = function (method, url, callback, options) {
   }
 
   if (options.withCredentials) {
-    xhr.withCredentials = true;
+    xhr.withCredentials = false;
   }
 
   xhr.onload = function () {
@@ -2972,7 +2972,7 @@ playerUtils.prepareForAds = function (player) {
       function firstPlay() {
         if (!isIPhone()) {
           volumeSnapshot = saveVolumeSnapshot();
-          player.muted(true);
+          // player.muted(true);
         }
 
         origPlay.apply(this, arguments);
