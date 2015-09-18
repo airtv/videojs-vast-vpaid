@@ -1,7 +1,8 @@
+
 {
   "bitwise": true,
   "immed": true,
-  "newcap": true,
+  "newcap": false,
   "noarg": true,
   "noempty": true,
   "nonew": true,
@@ -54,7 +55,6 @@
     "isOldIE":true,
     "isMobile": true,
     "isIPhone": true,
-    "isAndroid": true,
     /* Utils */
     "dom":true,
     "xml":true,
@@ -73,6 +73,7 @@
     "Ad":true,
     "Linear":true,
     "Wrapper":true,
+    "VAST":true,
     "VASTResponse":true,
     "TrackingEvent":true,
     "Creative":true,
@@ -85,9 +86,33 @@
     "VPAIDIntegrator":true,
     "VASTClient":true,
     "VASTTracker":true,
+    "HttpRequestError":true,
+    "HttpRequest":true,
     "VPAIDAdUnitWrapper":true,
     /* Video.js */
     "vjs":true,
-    "videojs":true
-    }
+    "videojs":true,
+    /* MOCHA */
+    "describe": true,
+    "it": true,
+    "before": true,
+    "beforeEach": true,
+    "after": true,
+    "afterEach": true,
+    "assert": true,
+    "sinon": true,
+    "lastArg": true,
+    "stubAsyncStep": true,
+    "firstArg": true,
+    "secondArg": true,
+    "thirdArg": true,
+    "fourthArg": true,
+    "click": true,
+    /* TEST GLOBALS */
+    "getInternetExplorerVersion": true,
+    "assertEmptyArray": true,
+    "createMouseEvent": true,
+    "isAndroid": true,
+    "_UA": true
+  }
 }

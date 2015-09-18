@@ -4,12 +4,35 @@ describe("VPAIDFlashTech", function () {
   });
 
   describe("supports", function () {
-    it("must be a function", function () {
-      assert.isFunction(VPAIDFlashTech.supports);
+    describe('must handle flash support', function() {
+      var FLASH_STRING = 'application/x-shockwave-flash';
+      var originalFlash;
+
+      beforeEach(function() {
+        originalFlash = VPAIDFLASHClient;
+        VPAIDFLASHClient = {
+          isSupported: function() {
+            return true;
+          }
+        };
+      });
+
+      afterEach(function() {
+        VPAIDFLASHClient = originalFlash;
+      });
+
+      it("must return true when you pass 'application/x-shockwave-flash' if the browser supports", function() {
+        assert.isTrue(VPAIDFlashTech.supports(FLASH_STRING));
+      });
+
+      it("must return false when you pass 'application/x-shockwave-flash' if the browser doesn't support it", function() {
+        sinon.stub(VPAIDFLASHClient, 'isSupported', function () {return false;});
+        assert.isFalse(VPAIDFlashTech.supports(FLASH_STRING));
+      });
+
     });
 
-    it("must return true when you pass 'application/x-shockwave-flash' as type and false otherwise", function () {
-      assert.isTrue(VPAIDFlashTech.supports('application/x-shockwave-flash'));
+    it("must return true when you pass 'application/javascript' as type and false otherwise", function () {
       assert.isFalse(VPAIDFlashTech.supports('application/javascript'));
       assert.isFalse(VPAIDFlashTech.supports(undefined));
       assert.isFalse(VPAIDFlashTech.supports(null));
@@ -20,8 +43,8 @@ describe("VPAIDFlashTech", function () {
   it("must complain if you don't pass a valid media file", function(){
     [undefined, null, {}, []].forEach(function (invalidMediaFile) {
       assert.throws(function() {
-        new VPAIDFlashTech(invalidMediaFile);
-      }, VASTError, 'VAST Error: on VPAIDFlashTech, invalid MediaFile')
+        var tech = new VPAIDFlashTech(invalidMediaFile);
+      }, VASTError, 'VAST Error: on VPAIDFlashTech, invalid MediaFile');
     });
   });
 

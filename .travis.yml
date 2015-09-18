@@ -11,7 +11,11 @@ install:
   - npm install
   - bower install
 after_success:
-  - npm run release
+  - ./scripts/release
+branches:
+  except:
+    - RELEASE
+    - /^\d+\.\d+\.\d+$/
 addons:
   code_climate:
     repo_token:

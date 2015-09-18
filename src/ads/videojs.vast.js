@@ -36,12 +36,20 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
 
   var settings = extend({}, defaultOpts, options || {});
 
-  if (isString(settings.url)) {
-    settings.url = echoFn(settings.url);
+  if(isUndefined(settings.adTagUrl) && isDefined(settings.url)){
+    settings.adTagUrl = settings.url;
   }
 
-  if (!isDefined(settings.url)) {
-    return trackAdError(new VASTError('on VideoJS VAST plugin, missing url on options object'));
+  if (isString(settings.adTagUrl)) {
+    settings.adTagUrl = echoFn(settings.adTagUrl);
+  }
+
+  if (isDefined(settings.adTagXML) && !isFunction(settings.adTagXML)) {
+    return trackAdError(new VASTError('on VideoJS VAST plugin, the passed adTagXML option does not contain a function'));
+  }
+
+  if (!isDefined(settings.adTagUrl) && !isFunction(settings.adTagXML)) {
+    return trackAdError(new VASTError('on VideoJS VAST plugin, missing adTagUrl on options object'));
   }
 
   playerUtils.prepareForAds(player);
@@ -56,11 +64,6 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
   }
 
   player.on('vast.firstPlay', tryToPlayPrerollAd);
-
-  //If there is an error on the player, we reset the plugin.
-  player.on('error', function() {
-    player.trigger('vast.reset');
-  });
 
   player.on('vast.reset', function () {
     //If we are reseting the plugin, we don't want to restore the content
@@ -95,8 +98,8 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
     });
 
     async.waterfall([
-      checkAdsEnabled,
       preparePlayerForAd,
+      checkAdsEnabled,
       playPrerollAd
     ], function (error, response) {
       if (error) {
@@ -115,22 +118,22 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
     }
 
     function restoreVideoContent() {
+      setupContentEvents();
       if (snapshot) {
         playerUtils.restorePlayerSnapshot(player, snapshot);
         snapshot = null;
-        setupContentEvents();
       }
     }
 
     function setupContentEvents() {
-      playerUtils.once(player, ['playing', 'vast.reset'], function (evt) {
+      playerUtils.once(player, ['playing', 'vast.reset', 'vast.firstPlay'], function (evt) {
         if (evt.type !== 'playing') {
           return;
         }
 
         player.trigger('vast.contentStart');
 
-        playerUtils.once(player, ['ended', 'vast.reset'], function (evt) {
+        playerUtils.once(player, ['ended', 'vast.reset', 'vast.firstPlay'], function (evt) {
           if (evt.type === 'ended') {
             player.trigger('vast.contentEnd');
           }
@@ -208,7 +211,7 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
   }
 
   function getVastResponse(callback) {
-    vast.getVASTResponse(settings.url(), callback);
+    vast.getVASTResponse(settings.adTagUrl ? settings.adTagUrl() : settings.adTagXML, callback);
   }
 
   function playAd(vastResponse, callback) {
@@ -221,8 +224,6 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
     var adIntegrator = isVPAID(vastResponse) ? new VPAIDIntegrator(player, settings) : new VASTIntegrator(player);
     var adFinished = false;
 
-    player.vast.adUnit = adIntegrator.playAd(vastResponse, callback);
-
     playerUtils.once(player, ['vast.adStart', 'vast.adsCancel'], function (evt) {
       if (evt.type === 'vast.adStart') {
         addAdsLabel();
@@ -234,6 +235,8 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
     if (isIDevice()) {
       preventManualProgress();
     }
+
+    player.vast.adUnit = adIntegrator.playAd(vastResponse, callback);
 
     /*** Local functions ****/
     function addAdsLabel() {
@@ -249,13 +252,14 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
     }
 
     function preventManualProgress() {
-      var PROGRESS_THRESHOLD = 1;
-      var previousTime = player.currentTime();
+      //IOS video clock is very unreliable and we need a 3 seconds threshold to ensure that the user forwarded/rewound the ad
+      var PROGRESS_THRESHOLD = 3;
+      var previousTime = 0;
       var tech = player.el().querySelector('.vjs-tech');
       var skipad_attempts = 0;
 
       player.on('timeupdate', adTimeupdateHandler);
-      playerUtils.once(player, ['vast.adEnd', 'vast.adsCancel'], stopPreventManualProgress);
+      playerUtils.once(player, ['vast.adEnd', 'vast.adsCancel', 'vast.adError'], stopPreventManualProgress);
 
       /*** Local functions ***/
       function adTimeupdateHandler() {
@@ -298,4 +302,3 @@ vjs.plugin('vastClient', function VASTPlugin(options) {
     return false;
   }
 });
-

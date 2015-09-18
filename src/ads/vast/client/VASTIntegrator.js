@@ -103,11 +103,16 @@ VASTIntegrator.prototype._setupEvents = function setupEvents(adMediaFile, tracke
   player.on('volumechange', trackVolumeChange);
 
   playerUtils.once(player, ['vast.adEnd', 'vast.adsCancel'], unbindEvents);
+  playerUtils.once(player, ['vast.adEnd', 'vast.adsCancel', 'vast.adSkip'], function(evt){
+    if(evt.type === 'vast.adEnd'){
+      tracker.trackComplete();
+    }
+  });
+
   return callback(null, adMediaFile, response);
 
   /*** Local Functions ***/
   function unbindEvents() {
-    tracker.trackComplete();
     player.off('fullscreenchange', trackFullscreenChange);
     player.off('vast.adStart', trackImpressions);
     player.off('pause', trackPause);
@@ -124,9 +129,18 @@ VASTIntegrator.prototype._setupEvents = function setupEvents(adMediaFile, tracke
   }
 
   function trackPause() {
+    //NOTE: whenever a video ends the video Element triggers a 'pause' event before the 'ended' event.
+    //      We should not track this pause event because it makes the VAST tracking confusing again we use a
+    //      Threshold of 2 seconds to prevent false positives on IOS.
+    if (Math.abs(player.duration() - player.currentTime()) < 2) {
+      return;
+    }
+
     tracker.trackPause();
-    player.one('play', function () {
-      tracker.trackResume();
+    playerUtils.once(player, ['play', 'vast.adEnd', 'vast.adsCancel'], function (evt) {
+      if(evt.type === 'play'){
+        tracker.trackResume();
+      }
     });
   }
 
@@ -137,6 +151,7 @@ VASTIntegrator.prototype._setupEvents = function setupEvents(adMediaFile, tracke
 
   function trackImpressions() {
     tracker.trackImpressions();
+    tracker.trackCreativeView();
   }
 
   function trackVolumeChange() {
@@ -167,7 +182,7 @@ VASTIntegrator.prototype._addSkipButton = function addSkipButton(source, tracker
     player.el().appendChild(skipButton);
     player.on('timeupdate', updateSkipButton);
 
-    playerUtils.once(player, ['ended', 'error'], removeSkipButton);
+    playerUtils.once(player, ['vast.adEnd', 'vast.adsCancel'], removeSkipButton);
 
     function removeSkipButton() {
       player.off('timeupdate', updateSkipButton);
@@ -182,7 +197,7 @@ VASTIntegrator.prototype._addSkipButton = function addSkipButton(source, tracker
     skipButton.onclick = function (e) {
       if (dom.hasClass(skipButton, 'enabled')) {
         tracker.trackSkip();
-        player.trigger('ended');//We trigger the end of the ad playing
+        player.trigger('vast.adSkip');
       }
 
       //We prevent event propagation to avoid problems with the clickThrough and so on
@@ -216,7 +231,7 @@ VASTIntegrator.prototype._addClickThrough = function addClickThrough(mediaFile, 
 
   player.el().insertBefore(blocker, player.controlBar.el());
   player.on('timeupdate', updateBlocker);
-  playerUtils.once(player, ['ended', 'error'], removeBlocker);
+  playerUtils.once(player, ['vast.adEnd', 'vast.adsCancel'], removeBlocker);
 
   return callback(null, mediaFile, tracker, response);
 
@@ -273,6 +288,7 @@ VASTIntegrator.prototype._addClickThrough = function addClickThrough(mediaFile, 
 VASTIntegrator.prototype._playSelectedAd = function playSelectedAd(source, response, callback) {
   var player = this.player;
 
+  player.preload("auto"); //without preload=auto the durationchange event is never fired
   player.src(source);
 
   playerUtils.once(player, ['durationchange', 'error', 'vast.adsCancel'], function (evt) {
@@ -294,8 +310,8 @@ VASTIntegrator.prototype._playSelectedAd = function playSelectedAd(source, respo
 
       player.trigger('vast.adStart');
 
-      playerUtils.once(player, ['ended', 'vast.adsCancel'], function (evt) {
-        if(evt.type === 'ended'){
+      playerUtils.once(player, ['ended', 'vast.adsCancel', 'vast.adSkip'], function (evt) {
+        if(evt.type === 'ended' || evt.type === 'vast.adSkip'){
           callback(null, response);
         }
         //NOTE: if the ads get cancel we do nothing
@@ -307,4 +323,3 @@ VASTIntegrator.prototype._playSelectedAd = function playSelectedAd(source, respo
 VASTIntegrator.prototype._trackError = function trackError(error, response) {
   vastUtil.track(response.errorURLMacros, {ERRORCODE: error.code || 900});
 };
-

@@ -5,8 +5,7 @@
 
   This plugin allows videojs to monetise its videos. To do so, it implements the [VAST](http://www.iab.net/media/file/VASTv3.0.pdf) and [VPAID](http://www.iab.net/media/file/VPAID_2.0_Final_04-10-2012.pdf) specifications from IAB.
 
-  Currently we support VAST and VPAID Flash preroll ads.
-  We are working to support VPAID HTML5 preroll ads, and we will add more VAST ad types as we need them.
+  Currently we support VAST and VPAID [Flash](https://github.com/MailOnline/VPAIDFLASHClient) and [HTML5](https://github.com/MailOnline/VPAIDHTML5Client) preroll ads, we will add more VAST ad types as we need them.
 
   It is important to notice that **VPAID integration is still in beta** and we have not yet released a stable version.
 
@@ -84,7 +83,37 @@
 
 ## Options
 
-### url
+### adTagUrl
+  >Use it to pass the ad media tag, it can be a string containing the Media tag url
+  >
+  >##### Hardcoded Media Tag
+  >
+  > var vastAd = player.vastClient({
+  >   adTagUrl: "http://pubads.g.doubleclick.net/gampad/ads?env=....",
+  >  ...
+  > });
+  >
+  >
+  >or a function that will return the Media tag whenever called
+  >
+  >
+  >#####  Dynamic Media Tag
+  >```javascript
+  >var vastAd = player.vastClient({
+  >adTagUrl: getAdsUrl,
+  > ...
+  >});
+  >
+  >function getAdsUrl() {
+  >      return "http://pubads.g.doubleclick.net/gampad/ads?env=....";
+  >}
+  >```
+  >On initialization, the plugin well call the function and store the returned Media tag to request the VAST/VPAID ads.
+
+
+### url (deprecated)
+  >**This option is deprecated and you should use adTagUrl instead**
+  >
   >Use it to pass the ad media tag, it can be a string containing the Media tag url
   >
   >##### Hardcoded Media Tag
@@ -110,6 +139,29 @@
   >}
   >```
   >On initialization, the plugin well call the function and store the returned Media tag to request the VAST/VPAID ads.
+
+### adTagXML
+  >You can now do the VAST xml request on your own with our shinny new adTagXML option. 
+  >
+  >All you need to do is to pass the request fn as the adTagXML option when you initialize the plugin. See below for an example
+  >
+  >##### Using the adTagXML option
+  >```javascript
+  >var vastAd = player.vastClient({
+  >adTagXML: requestVASTXML,
+  > ...
+  >});
+  >
+  >function requestVASTXML(callback) {
+  >    //The setTimeout below is to simulate asynchrony
+  >    setTimeout(function(){
+  >      callback(null, '<VAST version="3.0"><Ad><Inline>...</Inline></Ad></VAST>');
+  >    }, 0);
+  >}
+  >```
+  >As you can see the requestVASTXML function above expects a node like error-first-callback that needs to be called whenever we are ready to serve the VAST XML.  
+  >If you had any error executing the request, you need to pass it as the first argument of the callback 
+  >and if there was no error pass null as the first argument and the VAST XML string as the second argument. 
 
 ### playAdAlways
   >Flag to indicate if we must play an ad whenever possible. If set to true the plugin will play an ad every time the user watches a new video or replays the actual video.
@@ -195,9 +247,12 @@
 
 ### 'vast.adStart' event
   Fired when the ad starts playing
+  
+### 'vast.adStart' event
+  Fired when the ad starts playing
 
-### 'vast.adEnd' event
-  Fired when the ad end playing
+### 'vast.adSkip' event
+  Fired when the a vast ad gets skiped
 
 ### 'vast.adError' event
   Fired whenever there is an error with the ad. The error itself gets added to the event object in the property 'error'.
@@ -210,10 +265,10 @@
 
 ### 'vast.contentEnded' event
   Fired when the video content ends.
-  
+
 ### 'vast.reset' event
   Trigger the 'vast.reset' event whenever you want to reset the plugin. Beware that if an ad is playing it will be canceled.
-  
+
 ## Running the plugin
   If you want to run the plugin you need to clone the repo into your local environment
   ```
@@ -248,8 +303,7 @@ ____   ____.__     .___                     __          ____   ____             
 ║                         │ If you use "--env production" everything will be minified                      ║
 ║                         │ and the dist folder will be updated accordingly.                               ║
 ╟─────────────────────────┼────────────────────────────────────────────────────────────────────────────────╢
-║ release                 │ Creates a new version of the player and releases it.                           ║
-║                         │ Increasing version, creating new tag and so on (--bump [patch(default)/minor/… ║
+║ deploy-demo             │ Builds the demo and deploys it to github pages                                 ║
 ╟─────────────────────────┼────────────────────────────────────────────────────────────────────────────────╢
 ║ watch                   │ watches for changes on the plugin files and executes the appropriate tasks     ║
 ╟─────────────────────────┼────────────────────────────────────────────────────────────────────────────────╢
