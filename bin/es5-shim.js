@@ -882,20 +882,19 @@ var dontEnums = [
 ];
 var dontEnumsLength = dontEnums.length;
 
-// taken directly from https://github.com/ljharb/is-arguments/blob/master/index.js
-// can be replaced with require('is-arguments') if we ever use a build process instead
-var isStandardArguments = function isArguments(value) {
-    return toStr(value) === '[object Arguments]';
+var isArguments = function isArguments(value) {
+    var str = toStr(value);
+    var isArgs = str === '[object Arguments]';
+    if (!isArgs) {
+        isArgs = !isArray(value) &&
+          value !== null &&
+          typeof value === 'object' &&
+          typeof value.length === 'number' &&
+          value.length >= 0 &&
+          isCallable(value.callee);
+    }
+    return isArgs;
 };
-var isLegacyArguments = function isArguments(value) {
-    return value !== null &&
-        typeof value === 'object' &&
-        typeof value.length === 'number' &&
-        value.length >= 0 &&
-        !isArray(value) &&
-        isCallable(value.callee);
-};
-var isArguments = isStandardArguments(arguments) ? isStandardArguments : isLegacyArguments;
 
 defineProperties($Object, {
     keys: function keys(object) {
@@ -941,10 +940,6 @@ var keysWorksWithArguments = $Object.keys && (function () {
     // Safari 5.0 bug
     return $Object.keys(arguments).length === 2;
 }(1, 2));
-var keysHasArgumentsLengthBug = $Object.keys && (function () {
-    var argKeys = $Object.keys(arguments);
-	return arguments.length !== 1 || argKeys.length !== 1 || argKeys[0] !== 1;
-}(1));
 var originalKeys = $Object.keys;
 defineProperties($Object, {
     keys: function keys(object) {
@@ -954,7 +949,7 @@ defineProperties($Object, {
             return originalKeys(object);
         }
     }
-}, !keysWorksWithArguments || keysHasArgumentsLengthBug);
+}, !keysWorksWithArguments);
 
 //
 // Date
@@ -1071,7 +1066,7 @@ if (!dateToJSONIsSupported) {
 var supportsExtendedYears = Date.parse('+033658-09-27T01:46:40.000Z') === 1e15;
 var acceptsInvalidDates = !isNaN(Date.parse('2012-04-04T24:00:00.500Z')) || !isNaN(Date.parse('2012-11-31T23:59:59.000Z')) || !isNaN(Date.parse('2012-12-31T23:59:60.000Z'));
 var doesNotParseY2KNewYear = isNaN(Date.parse('2000-01-01T00:00:00.000Z'));
-if (doesNotParseY2KNewYear || acceptsInvalidDates || !supportsExtendedYears) {
+if (!Date.parse || doesNotParseY2KNewYear || acceptsInvalidDates || !supportsExtendedYears) {
     // XXX global assignment won't work in embeddings that use
     // an alternate object for the context.
     /* global Date: true */
@@ -1099,10 +1094,8 @@ if (doesNotParseY2KNewYear || acceptsInvalidDates || !supportsExtendedYears) {
             } else {
                 date = NativeDate.apply(this, arguments);
             }
-            if (!isPrimitive(date)) {
-              // Prevent mixups with unfixed Date object
-              defineProperties(date, { constructor: DateShim }, true);
-            }
+            // Prevent mixups with unfixed Date object
+            defineProperties(date, { constructor: DateShim }, true);
             return date;
         };
 
