@@ -6010,4 +6010,4 @@ var vastUtil = {
   isVPAID: function isVPAIDMediaFile(mediaFile) {
     return !!mediaFile && mediaFile.apiFramework === 'VPAID';
   }
-};})(window, document, videojs);
+};})(window, document, ajs.videojs);
